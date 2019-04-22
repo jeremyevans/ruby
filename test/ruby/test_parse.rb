@@ -378,15 +378,17 @@ class TestParse < Test::Unit::TestCase
 
   def assert_disallowed_variable(type, noname, invalid)
     noname.each do |name|
-      assert_syntax_error("proc{a = #{name} }", "`#{noname[0]}' without identifiers is not allowed as #{type} variable name")
+      assert_syntax_error("a = #{name}", "`#{noname[0]}' without identifiers is not allowed as #{type} variable name")
     end
     invalid.each do |name|
-      assert_syntax_error("proc {a = #{name} }", "`#{name}' is not allowed as #{type} variable name")
+      assert_syntax_error("a = #{name}", "`#{name}' is not allowed as #{type} variable name")
     end
   end
 
   def test_disallowed_instance_variable
-    assert_disallowed_variable("an instance", %w[@ @.], %w[])
+    assert_syntax_error("a = @", "implicit parameter outside block")
+    assert_syntax_error("a = @.to_f", "implicit parameter outside block")
+    assert_syntax_error("a = @1", "`@1' is not allowed as an instance variable name")
   end
 
   def test_disallowed_class_variable
@@ -720,9 +722,8 @@ x = __ENCODING__
   end
 
   def test_invalid_instance_variable
-    pattern = /without identifiers is not allowed as an instance variable name/
-    assert_raise_with_message(SyntaxError, pattern) { eval('@%') }
-    assert_raise_with_message(SyntaxError, pattern) { eval('@') }
+    assert_raise_with_message(SyntaxError, /implicit parameter outside block.*unterminated quoted string meets end of file/m) { eval('@%') }
+    assert_raise_with_message(SyntaxError, /implicit parameter outside block/) { eval('@') }
   end
 
   def test_invalid_class_variable
