@@ -3219,7 +3219,7 @@ class TestArray < Test::Unit::TestCase
     10000.times { lit << "{}," }
     lit << "**{}]"
 
-    assert_equal(10000, eval(lit).size)
+    assert_equal(10001, eval(lit).size)
   end
 
   private

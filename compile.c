@@ -4155,6 +4155,7 @@ static int
 compile_hash(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, int popped)
 {
     int line = (int)nd_line(node);
+    int literal_hash = (int)node->nd_brace;
 
     node = node->nd_head;
 
@@ -4287,7 +4288,7 @@ compile_hash(rb_iseq_t *iseq, LINK_ANCHOR *const ret, const NODE *node, int popp
                 int only_kw = last_kw && first_kw;            /* foo(1,2,3, **kw) */
 
                 if (empty_kw) {
-                    if (only_kw) {
+                    if (only_kw && !literal_hash) {
                         /* **{} appears at the last, so it won't be modified.
                          * kw is a special NODE_LIT that contains a special empty hash,
                          * so this emits: putobject {}

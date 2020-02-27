@@ -2403,14 +2403,18 @@ aref_args	: none
 		| args ',' assocs trailer
 		    {
 		    /*%%%*/
-			$$ = $3 ? arg_append(p, $1, new_hash(p, $3, &@3), &@$) : $1;
+                        NODE *n = new_hash(p, $3, &@3);
+                        n->nd_brace = TRUE;
+                        $$ = $3 ? arg_append(p, $1, n, &@$) : $1;
 		    /*% %*/
 		    /*% ripper: args_add!($1, bare_assoc_hash!($3)) %*/
 		    }
 		| assocs trailer
 		    {
 		    /*%%%*/
-			$$ = $1 ? NEW_LIST(new_hash(p, $1, &@1), &@$) : 0;
+                        NODE *n = new_hash(p, $1, &@1);
+                        n->nd_brace = TRUE;
+                        $$ = $1 ? NEW_LIST(n, &@$) : 0;
 		    /*% %*/
 		    /*% ripper: args_add!(args_new!, bare_assoc_hash!($1)) %*/
 		    }

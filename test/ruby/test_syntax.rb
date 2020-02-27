@@ -93,30 +93,41 @@ class TestSyntax < Test::Unit::TestCase
     assert_valid_syntax("tap (proc do end)", __FILE__, bug9726)
   end
 
+  def test_hash_kwsplat_hash
+    kw = {}
+    h = {a: 1}
+    assert_equal({}, {**{}})
+    assert_equal({}, {**kw})
+    assert_equal(h, {**h})
+    assert_equal(false, {**{}}.frozen?)
+    assert_equal(false, {**kw}.equal?(kw))
+    assert_equal(false, {**h}.equal?(h))
+  end
+
   def test_array_kwsplat_hash
     kw = {}
     h = {a: 1}
-    assert_equal([], [**{}])
-    assert_equal([], [**kw])
+    assert_equal([{}], [**{}])
+    assert_equal([kw], [**kw])
     assert_equal([h], [**h])
     assert_equal([{}], [{}])
     assert_equal([kw], [kw])
     assert_equal([h], [h])
 
-    assert_equal([1], [1, **{}])
-    assert_equal([1], [1, **kw])
+    assert_equal([1, {}], [1, **{}])
+    assert_equal([1, kw], [1, **kw])
     assert_equal([1, h], [1, **h])
     assert_equal([1, {}], [1, {}])
     assert_equal([1, kw], [1, kw])
     assert_equal([1, h], [1, h])
 
-    assert_equal([], [**kw, **kw])
-    assert_equal([], [**kw, **{}, **kw])
-    assert_equal([1], [1, **kw, **{}, **kw])
+    assert_equal([kw], [**kw, **kw])
+    assert_equal([kw], [**kw, **{}, **kw])
+    assert_equal([1, kw], [1, **kw, **{}, **kw])
 
-    assert_equal([{}], [{}, **kw, **kw])
-    assert_equal([kw], [kw, **kw, **kw])
-    assert_equal([h], [h, **kw, **kw])
+    assert_equal([{}, kw], [{}, **kw, **kw])
+    assert_equal([kw, kw], [kw, **kw, **kw])
+    assert_equal([h, kw], [h, **kw, **kw])
     assert_equal([h, h], [h, **kw, **kw, **h])
 
     assert_equal([h, {:a=>2}], [h, **{}, **h, a: 2])
