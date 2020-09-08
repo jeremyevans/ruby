@@ -81,6 +81,8 @@ char *strchr(char*,char);
 #define USE_NAME_ON_FS_BY_FNMATCH 2	/* select the matching
 					 * basename by fnmatch */
 
+#define MAX_GLOB_RECURSION_LEVEL 32
+
 #ifdef HAVE_GETATTRLIST
 # define USE_NAME_ON_FS USE_NAME_ON_FS_REAL_BASENAME
 # define RUP32(size) ((size)+3/4)
@@ -2261,7 +2263,8 @@ glob_helper(
     int flags,
     const ruby_glob_funcs_t *funcs,
     VALUE arg,
-    rb_encoding *enc)
+    rb_encoding *enc,
+    unsigned int recursion_level)
 {
     struct stat st;
     int status = 0;
@@ -2269,6 +2272,10 @@ glob_helper(
     int plain = 0, brace = 0, magical = 0, recursive = 0, match_all = 0, match_dir = 0;
     int escape = !(flags & FNM_NOESCAPE);
     size_t pathlen = baselen + namelen;
+
+    if (recursion_level > MAX_GLOB_RECURSION_LEVEL) {
+        rb_raise(rb_eRuntimeError, "directory glob recursion greater than max level");
+    }
 
     for (cur = beg; cur < end; ++cur) {
 	struct glob_pattern *p = *cur;
@@ -2508,7 +2515,7 @@ glob_helper(
 
 	    status = glob_helper(fd, buf, baselen, name - buf - baselen + namlen, 1,
 				 new_pathtype, new_beg, new_end,
-				 flags, funcs, arg, enc);
+                                 flags, funcs, arg, enc, recursion_level + 1);
 	    GLOB_FREE(buf);
 	    GLOB_FREE(new_beg);
 	    if (status) break;
@@ -2574,7 +2581,7 @@ glob_helper(
 		status = glob_helper(fd, buf, baselen,
 				     namelen + strlen(buf + pathlen), 1,
 				     new_pathtype, new_beg, new_end,
-				     flags, funcs, arg, enc);
+                                     flags, funcs, arg, enc, recursion_level + 1);
 		GLOB_FREE(buf);
 		GLOB_FREE(new_beg);
 		if (status) break;
@@ -2600,7 +2607,7 @@ push_caller(const char *path, VALUE val, void *enc)
     }
     status = glob_helper(arg->fd, arg->path, arg->baselen, arg->namelen, arg->dirsep,
 			 arg->pathtype, &list, &list + 1, arg->flags, arg->funcs,
-			 arg->arg, enc);
+                         arg->arg, enc, 0);
     glob_free_pattern(list);
     return status;
 }
@@ -2672,7 +2679,7 @@ ruby_glob0(const char *path, int fd, const char *base, int flags,
     }
     status = glob_helper(fd, buf, baselen, n-baselen, dirsep,
 			 path_unknown, &list, &list + 1,
-			 flags, funcs, arg, enc);
+                         flags, funcs, arg, enc, 0);
     glob_free_pattern(list);
     GLOB_FREE(buf);
 

@@ -170,6 +170,7 @@ class TestDir < Test::Unit::TestCase
   def test_glob_recursive
     bug6977 = '[ruby-core:47418]'
     bug8006 = '[ruby-core:53108] [Bug #8006]'
+    bug17162 = '[ruby-core:99967] [Bug #17162]'
     Dir.chdir(@root) do
       assert_include(Dir.glob("a/**/*", File::FNM_DOTMATCH), "a/.", bug8006)
 
@@ -190,6 +191,13 @@ class TestDir < Test::Unit::TestCase
       assert_equal(["a/.x/z"], Dir.glob("a/**/.x/z"), bug8283)
       assert_equal(["a/.x/z"], Dir.glob("a/.x/**/z"), bug8283)
       assert_equal(["a/b/.y/z"], Dir.glob("a/**/.y/z"), bug8283)
+
+      allowed = "a/z#{"/z"*25}"
+      too_deep = "a/y#{"/y"*35}"
+      FileUtils.mkdir_p(allowed)
+      FileUtils.mkdir_p(too_deep)
+      assert_include(Dir.glob("a/z/**/*"), allowed, bug17162)
+      assert_raise(RuntimeError) { Dir.glob("a/y/**/*") }
     end
   end
 
