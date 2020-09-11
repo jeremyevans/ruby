@@ -706,12 +706,24 @@ describe "String#%" do
     end
   end
 
-  it "formats zero without prefix using %#x" do
-    ("%#x" % 0).should == "0"
+  ruby_version_is ''...'3.0' do
+    it "formats zero without prefix using %#x" do
+      ("%#x" % 0).should == "0"
+    end
+
+    it "formats zero without prefix using %#X" do
+      ("%#X" % 0).should == "0"
+    end
   end
 
-  it "formats zero without prefix using %#X" do
-    ("%#X" % 0).should == "0"
+  ruby_version_is '3.0' do
+    it "formats zero with prefix using %#x" do
+      ("%#x" % 0).should == "0x0"
+    end
+
+    it "formats zero with prefix using %#X" do
+      ("%#X" % 0).should == "0X0"
+    end
   end
 
   %w(b d i o u x X).each do |f|

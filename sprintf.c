@@ -545,6 +545,7 @@ rb_str_format(int argc, const VALUE *argv, VALUE fmt)
                 int valsign;
 		char nbuf[BIT_DIGITS(SIZEOF_LONG*CHAR_BIT)+2], *s;
 		const char *prefix = 0;
+                int prefix_zero = 0;
 		int sign = 0, dots = 0;
 		char sc = 0;
 		long v = 0;
@@ -569,13 +570,21 @@ rb_str_format(int argc, const VALUE *argv, VALUE fmt)
 		      case 'o':
 			prefix = "0"; break;
 		      case 'x':
-			prefix = "0x"; break;
+                        prefix = "0x";
+                        if (!(flags&(FPLUS|FSPACE|FMINUS))) prefix_zero = 1;
+                        break;
 		      case 'X':
-			prefix = "0X"; break;
+                        prefix = "0X";
+                        if (!(flags&(FPLUS|FSPACE|FMINUS))) prefix_zero = 1;
+                        break;
 		      case 'b':
-			prefix = "0b"; break;
+                        prefix = "0b";
+                        if (!(flags&(FPLUS|FSPACE|FMINUS))) prefix_zero = 1;
+                        break;
 		      case 'B':
-			prefix = "0B"; break;
+                        prefix = "0B";
+                        if (!(flags&(FPLUS|FSPACE|FMINUS))) prefix_zero = 1;
+                        break;
 		    }
 		}
 
@@ -739,7 +748,7 @@ rb_str_format(int argc, const VALUE *argv, VALUE fmt)
 			prefix = 0;
 		    }
 		}
-		else if (len == 1 && *s == '0') {
+                else if (len == 1 && *s == '0' && !prefix_zero) {
 		    prefix = 0;
 		}
 		if (prefix) {

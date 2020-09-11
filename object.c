@@ -4145,8 +4145,9 @@ rb_obj_dig(int argc, VALUE *argv, VALUE obj, VALUE notfound)
  *             |               | until the first digit will be `0' if
  *             |               | it is not formatted as complements.
  *             |               | For the conversions `x', `X', `b' and `B'
- *             |               | on non-zero, prefix the result with ``0x'',
- *             |               | ``0X'', ``0b'' and ``0B'', respectively.
+ *             |               | prefix the result with ``0x'', ``0X'', ``0b''
+ *             |               | ``0B'', respectively, unless space, +, or
+ *             |               | - flag is used and value is zero.
  *             |               | For `a', `A', `e', `E', `f', `g', and 'G',
  *             |               | force a decimal point to be added,
  *             |               | even if no digits follow.

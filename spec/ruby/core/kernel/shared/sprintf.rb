@@ -494,14 +494,28 @@ describe :kernel_sprintf, shared: true do
           @method.call("%#X", -196).should == "0X..F3C"
         end
 
-        it "does nothing for zero argument" do
-          @method.call("%#b", 0).should == "0"
-          @method.call("%#B", 0).should == "0"
+        ruby_version_is ''...'3.0' do
+          it "does nothing for zero argument" do
+            @method.call("%#b", 0).should == "0"
+            @method.call("%#B", 0).should == "0"
 
-          @method.call("%#o", 0).should == "0"
+            @method.call("%#o", 0).should == "0"
 
-          @method.call("%#x", 0).should == "0"
-          @method.call("%#X", 0).should == "0"
+            @method.call("%#x", 0).should == "0"
+            @method.call("%#X", 0).should == "0"
+          end
+        end
+
+        ruby_version_is '3.0' do
+          it "prefixs the result with 0x, 0X, 0b, and 0B respectively for zero argument" do
+            @method.call("%#b", 0).should == "0b0"
+            @method.call("%#B", 0).should == "0B0"
+
+            @method.call("%#o", 0).should == "0"
+
+            @method.call("%#x", 0).should == "0x0"
+            @method.call("%#X", 0).should == "0X0"
+          end
         end
       end
 
