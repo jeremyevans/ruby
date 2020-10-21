@@ -35,26 +35,35 @@ static void coroutine_flush_register_windows() {
 static void coroutine_flush_register_windows() {}
 #endif
 
-int coroutine_save_stack(struct coroutine_context * context) {
+__attribute__((noinline))
+void* coroutine_save_stack_pointer(char *buf) {
     void *stack_pointer = &stack_pointer;
+    return stack_pointer;
+}
+
+int coroutine_save_stack(struct coroutine_context * context) {
+    void *stack_pointer;
+    char buf[128];
 
     assert(context->stack);
     assert(context->base);
 
-    // At this point, you may need to ensure on architectures that use register windows, that all registers are flushed to the stack.
-    coroutine_flush_register_windows();
-
+    stack_pointer = coroutine_save_stack_pointer(buf);
     // Save stack to private area:
     if (stack_pointer < context->base) {
         size_t size = (char*)context->base - (char*)stack_pointer;
         assert(size <= context->size);
 
+        // At this point, you may need to ensure on architectures that use register windows, that all registers are flushed to the stack.
+        coroutine_flush_register_windows();
         memcpy(context->stack, stack_pointer, size);
         context->used = size;
     } else {
         size_t size = (char*)stack_pointer - (char*)context->base;
         assert(size <= context->size);
 
+        // At this point, you may need to ensure on architectures that use register windows, that all registers are flushed to the stack.
+        coroutine_flush_register_windows();
         memcpy(context->stack, context->base, size);
         context->used = size;
     }
@@ -84,7 +93,7 @@ static void coroutine_restore_stack_padded(struct coroutine_context *context, vo
 
     // Restore registers:
     // The `| (int)buffer` is to force the compiler NOT to elide he buffer and `alloca`.
-    _longjmp(context->state, 1 | (int)buffer);
+    _longjmp(context->state, 1 | (int)(long)buffer);
 }
 
 static const size_t GAP = 128;

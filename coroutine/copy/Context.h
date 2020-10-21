@@ -71,6 +71,7 @@ static inline void coroutine_initialize(
     size_t size,
     void *base
 ) {
+    char buf[128];
     assert(start);
 
     coroutine_initialize_main(context, stack, size, base);
