@@ -6229,7 +6229,7 @@ rb_str_inspect(VALUE str)
 	    prev = p;
 	    continue;
 	}
-	if ((enc == resenc && rb_enc_isprint(c, enc)) ||
+        if ((enc == resenc && rb_enc_isprint(c, enc) && c != 0x85) ||
 	    (asciicompat && rb_enc_isascii(c, enc) && ISPRINT(c))) {
 	    continue;
 	}
