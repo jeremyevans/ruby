@@ -758,6 +758,37 @@ next_init(VALUE obj, struct enumerator *e)
     e->lookahead = Qundef;
 }
 
+struct get_next_values_args {
+    struct enumerator *e;
+    VALUE curr;
+};
+
+NORETURN(static void get_next_values_error(struct enumerator *, VALUE));
+
+static void
+get_next_values_error(struct enumerator *e, VALUE exc) {
+    e->fib = 0;
+    e->dst = Qnil;
+    e->lookahead = Qundef;
+    e->feedvalue = Qundef;
+    rb_exc_raise(exc);
+}
+
+static VALUE
+get_next_values_fiber_resume(VALUE vargs) {
+    struct get_next_values_args *args = (struct get_next_values_args*)vargs;
+    return rb_fiber_resume(args->e->fib, 1, &args->curr);
+}
+
+NORETURN(static VALUE get_next_values_fiber_resume_rescue(VALUE, VALUE));
+
+static VALUE
+get_next_values_fiber_resume_rescue(VALUE vargs, VALUE exc) {
+    struct enumerator *e = ((struct get_next_values_args*)vargs)->e;
+    e->stop_exc = rb_exc_new2(rb_eStopIteration, "iteration raised an error");
+    get_next_values_error(e, exc);
+}
+
 static VALUE
 get_next_values(VALUE obj, struct enumerator *e)
 {
@@ -772,13 +803,15 @@ get_next_values(VALUE obj, struct enumerator *e)
 	next_init(obj, e);
     }
 
-    vs = rb_fiber_resume(e->fib, 1, &curr);
+    struct get_next_values_args args;
+    args.e = e;
+    args.curr = curr;
+    vs = rb_rescue2(get_next_values_fiber_resume, (VALUE)&args,
+                    get_next_values_fiber_resume_rescue, (VALUE)&args,
+                    rb_eException, 0);
+
     if (e->stop_exc) {
-	e->fib = 0;
-	e->dst = Qnil;
-	e->lookahead = Qundef;
-	e->feedvalue = Qundef;
-	rb_exc_raise(e->stop_exc);
+        get_next_values_error(e, e->stop_exc);
     }
     return vs;
 }

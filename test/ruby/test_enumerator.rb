@@ -38,6 +38,16 @@ class TestEnumerator < Test::Unit::TestCase
     assert_raise(StopIteration){e.next}
   end
 
+  def test_next_raise
+    f = Enumerator.new { |y|
+      3.times {|i| i == 2 ? raise(i.to_s) : (y.yield i) }
+    }
+
+    result = 4.times.map { f.next rescue $!.message}
+    expected = [0, 1, "2", "iteration raised an error"]
+    assert_equal(expected, result)
+  end
+
   def test_loop
     e = 3.times
     i = 0
