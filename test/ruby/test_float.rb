@@ -874,6 +874,8 @@ class TestFloat < Test::Unit::TestCase
       a = rand
       b = a+rand*1000
       s = (b - a) / 10
+      b = a
+      10.times{b += s}
       assert_equal(11, (a..b).step(s).to_a.length)
     end
 
@@ -893,6 +895,8 @@ class TestFloat < Test::Unit::TestCase
       a = rand
       b = a+rand*1000
       s = (b - a) / 10
+      b = a
+      10.times{b += s}
       seq = (a...b).step(s)
       assert_equal(10, seq.to_a.length, seq.inspect)
     end
@@ -900,7 +904,7 @@ class TestFloat < Test::Unit::TestCase
     assert_equal([1.0, 2.9, 4.8, 6.699999999999999], (1.0...6.8).step(1.9).to_a)
 
     e = 1+1E-12
-    (1.0 ... e).step(1E-16) do |n|
+    (1.0 ... e).step(1E-15) do |n|
       assert_operator(n, :<=, e)
     end
   end

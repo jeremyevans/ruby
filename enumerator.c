@@ -127,7 +127,7 @@ VALUE rb_cEnumerator;
 static VALUE rb_cLazy;
 static ID id_rewind, id_new, id_to_enum;
 static ID id_next, id_result, id_receiver, id_arguments, id_memo, id_method, id_force;
-static ID id_begin, id_end, id_step, id_exclude_end;
+static ID id_begin, id_end, id_step, id_exclude_end, id_to_a, id_first, id_last;
 static VALUE sym_each, sym_cycle, sym_yield;
 
 static VALUE lazy_use_super_method;
@@ -3576,44 +3576,8 @@ arith_seq_first(int argc, VALUE *argv, VALUE self)
         }
         return ary;
     }
-    else if (RB_FLOAT_TYPE_P(b) || RB_FLOAT_TYPE_P(e) || RB_FLOAT_TYPE_P(s)) {
-        /* generate values like ruby_float_step */
-
-        double unit = NUM2DBL(s);
-        double beg = NUM2DBL(b);
-        double end = NIL_P(e) ? (unit < 0 ? -1 : 1)*HUGE_VAL : NUM2DBL(e);
-        double len = ruby_float_step_size(beg, end, unit, x);
-        long i;
-
-        if (n > len)
-            n = (long)len;
-
-        if (isinf(unit)) {
-            if (len > 0) {
-                ary = rb_ary_new_capa(1);
-                rb_ary_push(ary, DBL2NUM(beg));
-            }
-            else {
-                ary = rb_ary_new_capa(0);
-            }
-        }
-        else if (unit == 0) {
-            VALUE val = DBL2NUM(beg);
-            ary = rb_ary_new_capa(n);
-            for (i = 0; i < len; ++i) {
-                rb_ary_push(ary, val);
-            }
-        }
-        else {
-            ary = rb_ary_new_capa(n);
-            for (i = 0; i < n; ++i) {
-                double d = i*unit+beg;
-                if (unit >= 0 ? end < d : d < end) d = end;
-                rb_ary_push(ary, DBL2NUM(d));
-            }
-        }
-
-        return ary;
+    else if (RB_FLOAT_TYPE_P(b) || RB_FLOAT_TYPE_P(s)) {
+        return rb_funcall(rb_funcall(self, id_to_a, 0), id_first, 1, argv[0]);
     }
 
     return rb_call_super(argc, argv);
@@ -3733,9 +3697,20 @@ arith_seq_last(int argc, VALUE *argv, VALUE self)
         return rb_ary_new_capa(0);
     }
 
-    last = num_plus(b, num_mul(s, len_1));
-    if ((last_is_adjusted = arith_seq_exclude_end_p(self) && rb_equal(last, e))) {
-        last = num_minus(last, s);
+    if (RB_FLOAT_TYPE_P(b) || RB_FLOAT_TYPE_P(s)) {
+        VALUE array = rb_funcall(self, id_to_a, 0);
+        if (argc == 0) {
+            return rb_funcall(array, id_last, 0);
+        }
+
+        rb_scan_args(argc, argv, "1", &nv);
+        return rb_funcall(array, id_last, 1, nv);
+    }
+    else {
+        last = num_plus(b, num_mul(s, len_1));
+        if ((last_is_adjusted = arith_seq_exclude_end_p(self) && rb_equal(last, e))) {
+            last = num_minus(last, s);
+        }
     }
 
     if (argc == 0) {
@@ -4246,6 +4221,9 @@ Init_Enumerator(void)
     id_end = rb_intern_const("end");
     id_step = rb_intern_const("step");
     id_exclude_end = rb_intern_const("exclude_end");
+    id_to_a = rb_intern_const("to_a");
+    id_first = rb_intern_const("first");
+    id_last = rb_intern_const("last");
     sym_each = ID2SYM(id_each);
     sym_cycle = ID2SYM(rb_intern_const("cycle"));
     sym_yield = ID2SYM(rb_intern_const("yield"));

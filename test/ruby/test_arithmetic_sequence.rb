@@ -488,4 +488,37 @@ class TestArithmeticSequence < Test::Unit::TestCase
     assert_equal([1.0, 2.5, 4.0, 5.5, 7.0, 8.5, 10.0].sum, (1.0..10.0).step(1.5).sum)
     assert_equal([1/2r, 1r, 3/2r, 2, 5/2r, 3, 7/2r, 4].sum, ((1/2r)...(9/2r)).step(1/2r).sum)
   end
+
+  def test_float
+    beg = 0.24901079128550474
+    fin = 340.25008088980684
+    step = 34.00010700985213
+    n = beg
+    actual = [n]
+
+    10.times {actual << n+=34.00010700985213}
+    expected = [
+      beg,
+      34.249117801137636,
+      68.24922481098977,
+      102.2493318208419,
+      136.24943883069403,
+      170.24954584054615,
+      204.24965285039826,
+      238.24975986025038,
+      272.2498668701025,
+      306.2499738799546,
+      340.2500808898067
+    ]
+    assert_equal(expected, actual)
+
+    seq = (beg...fin).step(step)
+    assert_equal(expected, seq.to_a)
+    assert_equal(expected[0], seq.first)
+    assert_equal(expected, seq.first(11))
+    assert_equal(expected[0...10], seq.first(10))
+    assert_equal(expected[-1], seq.last)
+    assert_equal(expected, seq.last(11))
+    assert_equal(expected[1...11], seq.last(10))
+  end
 end

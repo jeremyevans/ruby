@@ -2440,7 +2440,6 @@ ruby_float_step(VALUE from, VALUE to, VALUE step, int excl, int allow_endless)
 	double beg = NUM2DBL(from);
         double end = (allow_endless && NIL_P(to)) ? (unit < 0 ? -1 : 1)*HUGE_VAL : NUM2DBL(to);
 	double n = ruby_float_step_size(beg, end, unit, excl);
-	long i;
 
 	if (isinf(unit)) {
 	    /* if unit is infinity, i*unit+beg is NaN */
@@ -2452,11 +2451,18 @@ ruby_float_step(VALUE from, VALUE to, VALUE step, int excl, int allow_endless)
 		rb_yield(val);
 	}
 	else {
-	    for (i=0; i<n; i++) {
-		double d = i*unit+beg;
-		if (unit >= 0 ? end < d : d < end) d = end;
-		rb_yield(DBL2NUM(d));
-	    }
+            if (unit > 0) {
+                while (excl ? (beg < end) : beg <= end) {
+                    rb_yield(DBL2NUM(beg));
+                    beg += unit;
+                }
+            }
+            else {
+                while (excl ? (beg > end) : beg >= end) {
+                    rb_yield(DBL2NUM(beg));
+                    beg += unit;
+                }
+            }
 	}
 	return TRUE;
     }
