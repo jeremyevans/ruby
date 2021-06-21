@@ -490,7 +490,8 @@ class TestFile < Test::Unit::TestCase
       File.binwrite(path, "a\r\nb\r\n")
       assert_equal("a\r\nb\r\n", test.(:lf))
       assert_equal("a\nb\n", test.(:universal))
-      assert_equal("a\r\nb\r\n", test.(:crlf))
+      # Work on both Windows and non-Windows
+      assert_include(["a\r\nb\r\n", "a\nb\n"], test.(:crlf))
       assert_equal("a\r\nb\r\n", test.(:cr))
 
       File.binwrite(path, "a\rb\r")
