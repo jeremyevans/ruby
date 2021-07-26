@@ -20,6 +20,7 @@
  *             extension libraries. They could be written in C++98.
  * @brief      Public APIs related to ::rb_cThread.
  */
+#include "ruby/internal/deprecated_io.h"
 #include "ruby/internal/config.h"
 #include "ruby/internal/cast.h"
 #include "ruby/internal/dllexport.h"
