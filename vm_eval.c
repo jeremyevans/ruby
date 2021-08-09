@@ -1977,9 +1977,7 @@ yield_under(VALUE under, VALUE self, int argc, const VALUE *argv, int kw_splat)
 	    new_block_handler = VM_BH_FROM_ISEQ_BLOCK(&new_captured);
 	    break;
 	  case block_handler_type_ifunc:
-	    captured = VM_BH_TO_CAPT_BLOCK(block_handler);
-	    new_captured = *captured;
-	    new_block_handler = VM_BH_FROM_IFUNC_BLOCK(&new_captured);
+            rb_raise(rb_eArgError, "cannot change self on proc created from method");
 	    break;
 	  case block_handler_type_proc:
 	    is_lambda = rb_proc_lambda_p(block_handler) != Qfalse;

@@ -816,6 +816,25 @@ class TestObject < Test::Unit::TestCase
     end
   end
 
+  def test_instance_exec_method_to_proc
+    a = Class.new do
+      def a
+        1
+      end
+    end
+
+    b = Class.new do
+      def b(x)
+        a + x
+      end
+    end
+
+    bug18069 = '[ruby-dev:51089]'
+    assert_raise(ArgumentError, bug18069) do
+      a.new.instance_exec(1, &b.new.method(:b).to_proc)
+    end
+  end
+
   def test_extend
     assert_raise(ArgumentError) do
       1.extend
