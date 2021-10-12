@@ -71,7 +71,10 @@
 #define USE_PERL_SUBEXP_CALL
 #define USE_CAPITAL_P_NAMED_GROUP
 #define USE_BACKREF_WITH_LEVEL        /* \k<name+n>, \k<name-n> */
-#define USE_MONOMANIAC_CHECK_CAPTURES_IN_ENDLESS_REPEAT  /* /(?:()|())*\2/ */
+
+/* disable due to Bug #17774 */
+/* #define USE_MONOMANIAC_CHECK_CAPTURES_IN_ENDLESS_REPEAT  /(?:()|())*\2/ */
+
 #define USE_NEWLINE_AT_END_OF_STRING_HAS_EMPTY_LINE     /* /\n$/ =~ "\n" */
 #define USE_WARNING_REDUNDANT_NESTED_REPEAT_OPERATOR
 /* !!! moved to regenc.h. */ /* #define USE_CRNL_AS_LINE_TERMINATOR */

@@ -40,6 +40,11 @@ class TestRegexp < Test::Unit::TestCase
     assert_equal("a".gsub(/a\Z/, ""), "")
   end
 
+  def test_ruby_core_103200
+    assert_equal(0, "xxxx" =~ /(?:x(){5})*$/)
+    assert_equal(0, "xxxx" =~ /(?:x(){4})*$/)
+  end
+
   def test_yoshidam_net_20041111_1
     s = "[\xC2\xA0-\xC3\xBE]"
     r = assert_deprecated_warning(/ignored/) {Regexp.new(s, nil, "u")}
