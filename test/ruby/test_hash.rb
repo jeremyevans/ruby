@@ -117,6 +117,18 @@ class TestHash < Test::Unit::TestCase
     assert_hash_does_not_rehash(&:dup)
   end
 
+  def test_duplicate_key_evaluation_order
+    a = []
+    h = eval('{a: (a << 1), b: (a << 2), a: (a << 3)}')
+    assert_equal([1, 2, 3], a)
+    assert_equal({a: a, b: a}, h)
+
+    a = []
+    h = eval('@cls[a: (a << 1), b: (a << 2), a: (a << 3)]')
+    assert_equal([1, 2, 3], a)
+    assert_equal(@cls[a: a, b: a], h)
+  end
+
   def assert_hash_does_not_rehash
     obj = Object.new
     class << obj

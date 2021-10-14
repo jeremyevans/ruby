@@ -12195,91 +12195,9 @@ dsym_node(struct parser_params *p, NODE *node, const YYLTYPE *loc)
     return node;
 }
 
-static int
-append_literal_keys(st_data_t k, st_data_t v, st_data_t h)
-{
-    NODE *node = (NODE *)v;
-    NODE **result = (NODE **)h;
-    node->nd_alen = 2;
-    node->nd_next->nd_end = node->nd_next;
-    node->nd_next->nd_next = 0;
-    if (*result)
-	list_concat(*result, node);
-    else
-	*result = node;
-    return ST_CONTINUE;
-}
-
-static bool
-hash_literal_key_p(VALUE k)
-{
-    switch (OBJ_BUILTIN_TYPE(k)) {
-      case T_NODE:
-	return false;
-      default:
-	return true;
-    }
-}
-
-static int
-literal_cmp(VALUE val, VALUE lit)
-{
-    if (val == lit) return 0;
-    if (!hash_literal_key_p(val) || !hash_literal_key_p(lit)) return -1;
-    return rb_iseq_cdhash_cmp(val, lit);
-}
-
-static st_index_t
-literal_hash(VALUE a)
-{
-    if (!hash_literal_key_p(a)) return (st_index_t)a;
-    return rb_iseq_cdhash_hash(a);
-}
-
-static const struct st_hash_type literal_type = {
-    literal_cmp,
-    literal_hash,
-};
-
-static NODE *
-remove_duplicate_keys(struct parser_params *p, NODE *hash)
-{
-    st_table *literal_keys = st_init_table_with_size(&literal_type, hash->nd_alen / 2);
-    NODE *result = 0;
-    rb_code_location_t loc = hash->nd_loc;
-    while (hash && hash->nd_head && hash->nd_next) {
-	NODE *head = hash->nd_head;
-	NODE *value = hash->nd_next;
-	NODE *next = value->nd_next;
-	VALUE key = (VALUE)head;
-	st_data_t data;
-	if (nd_type(head) == NODE_LIT &&
-	    st_lookup(literal_keys, (key = head->nd_lit), &data)) {
-	    rb_compile_warn(p->ruby_sourcefile, nd_line((NODE *)data),
-			    "key %+"PRIsVALUE" is duplicated and overwritten on line %d",
-			    head->nd_lit, nd_line(head));
-	    head = ((NODE *)data)->nd_next;
-	    head->nd_head = block_append(p, head->nd_head, value->nd_head);
-	}
-	else {
-	    st_insert(literal_keys, (st_data_t)key, (st_data_t)hash);
-	}
-	hash = next;
-    }
-    st_foreach(literal_keys, append_literal_keys, (st_data_t)&result);
-    st_free_table(literal_keys);
-    if (hash) {
-	if (!result) result = hash;
-	else list_concat(result, hash);
-    }
-    result->nd_loc = loc;
-    return result;
-}
-
 static NODE *
 new_hash(struct parser_params *p, NODE *hash, const YYLTYPE *loc)
 {
-    if (hash) hash = remove_duplicate_keys(p, hash);
     return NEW_HASH(hash, loc);
 }
 #endif
