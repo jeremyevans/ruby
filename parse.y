@@ -9331,6 +9331,9 @@ parser_yylex(struct parser_params *p)
 	c = (IS_lex_state(EXPR_BEG|EXPR_CLASS|EXPR_FNAME|EXPR_DOT) &&
 	     !IS_lex_state(EXPR_LABELED));
 	if (c || IS_lex_state_all(EXPR_ARG|EXPR_LABELED)) {
+            if (IS_lex_state_all(EXPR_ARG|EXPR_LABELED) && !p->lex.paren_nest) {
+                rb_warn0("keyword label followed by newline without parentheses will be changed in Ruby 3.3");
+            }
             if (!fallthru) {
                 dispatch_scan_event(p, tIGNORED_NL);
             }

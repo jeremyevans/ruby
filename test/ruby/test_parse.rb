@@ -347,6 +347,15 @@ class TestParse < Test::Unit::TestCase
     end
   end
 
+  def test_implicit_keyword_newline_bug_18396
+    b = nil
+    define_singleton_method(:y){|x:| b = x}
+    assert_warning(/keyword label followed by newline without parentheses/) do
+      eval("x = 1\ny x:\n2")
+      assert_equal(2, b)
+    end
+  end
+
   def test_words
     assert_equal([], %W( ))
     assert_syntax_error('%w[abc', /unterminated list/)

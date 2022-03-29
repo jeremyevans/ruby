@@ -45,6 +45,20 @@ Note that each entry is kept to a minimum, see links for details.
 
   [[Bug #15928]]
 
+* When a method call without parentheses uses a keyword label followed by
+  a newline and then an expression, Ruby 3.2 will issue a warning. In Ruby
+  3.3, the behavior will change so that the keyword label is treated as
+  a implicit keyword.  With this code:
+
+  ```ruby
+    x = 1
+    p x:
+    2
+  ```
+
+  Ruby 3.2 and previous versions will print `{x: 2}`. Ruby 3.2 will also
+  issue a warning.  Ruby 3.3 will print `{x: 1}`. [[Bug #18396]]
+
 * Find pattern is no longer experimental.
   [[Feature #18585]]
 
@@ -196,6 +210,7 @@ The following deprecated APIs are removed.
 [Feature #17881]: https://bugs.ruby-lang.org/issues/17881
 [Feature #18037]: https://bugs.ruby-lang.org/issues/18037
 [Feature #18351]: https://bugs.ruby-lang.org/issues/18351
+[Bug #18396]:     https://bugs.ruby-lang.org/issues/18396
 [Bug #18487]:     https://bugs.ruby-lang.org/issues/18487
 [Feature #18571]: https://bugs.ruby-lang.org/issues/18571
 [Feature #18585]: https://bugs.ruby-lang.org/issues/18585
