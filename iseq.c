@@ -3556,7 +3556,6 @@ iseq_remove_local_tracepoint(const rb_iseq_t *iseq, VALUE tpval)
         local_events = iseq->aux.exec.local_hooks->events;
 
         if (local_events == 0) {
-            rb_hook_list_free(iseq->aux.exec.local_hooks);
             ((rb_iseq_t *)iseq)->aux.exec.local_hooks = NULL;
         }
 

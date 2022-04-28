@@ -5673,6 +5673,10 @@ rb_vm_opt_cfunc_p(CALL_CACHE cc, int insn)
 #define VM_TRACE_HOOK(target_event, val) do { \
     if ((pc_events & (target_event)) & enabled_flags) { \
         vm_trace_hook(ec, reg_cfp, pc, pc_events, (target_event), global_hooks, local_hooks, (val)); \
+        if (local_hooks && local_hooks->is_local && local_hooks->events == 0) { \
+            rb_hook_list_free(local_hooks); \
+            local_hooks = NULL; \
+        } \
     } \
 } while (0)
 
