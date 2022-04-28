@@ -68,7 +68,7 @@ rb_hook_list_mark(rb_hook_list_t *hooks)
 
 static void clean_hooks(const rb_execution_context_t *ec, rb_hook_list_t *list);
 
-void
+MJIT_FUNC_EXPORTED void
 rb_hook_list_free(rb_hook_list_t *hooks)
 {
     hooks->need_clean = true;
