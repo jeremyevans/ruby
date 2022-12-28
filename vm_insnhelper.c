@@ -2552,7 +2552,7 @@ CALLER_SETUP_ARG(struct rb_control_frame_struct *restrict cfp,
                 else {
                     final_hash = rb_hash_dup(final_hash);
 
-                    if (UNLIKELY(calling->heap_argv)) {
+                    if (UNLIKELY(allow_heap_argv && calling->heap_argv)) {
                         RARRAY_ASET(argv, hash_idx, final_hash);
                     }
                     else {
@@ -2571,7 +2571,7 @@ CALLER_SETUP_ARG(struct rb_control_frame_struct *restrict cfp,
              */
             vm_caller_setup_arg_kw(cfp, calling, ci);
         }
-        else if (UNLIKELY(calling->heap_argv)) {
+        else if (UNLIKELY(allow_heap_argv && calling->heap_argv)) {
             VALUE argv = cfp->sp[-1];
             long hash_idx = RARRAY_LEN(argv) - 1;
             VALUE keyword_hash = RARRAY_AREF(argv, hash_idx);
