@@ -297,8 +297,8 @@ struct rb_calling_info {
     VALUE block_handler;
     VALUE recv;
     int argc;
-    unsigned int kw_splat : 1;
-    unsigned int heap_argv : 1;
+    bool kw_splat;
+    bool heap_argv;
 };
 
 struct rb_execution_context_struct;
