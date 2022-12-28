@@ -297,7 +297,8 @@ struct rb_calling_info {
     VALUE block_handler;
     VALUE recv;
     int argc;
-    int kw_splat;
+    unsigned int kw_splat : 1;
+    unsigned int heap_argv : 1;
 };
 
 struct rb_execution_context_struct;
@@ -785,6 +786,13 @@ typedef struct rb_vm_struct {
 
 #ifndef VM_DEBUG_VERIFY_METHOD_CACHE
 #define VM_DEBUG_VERIFY_METHOD_CACHE (VMDEBUG != 0)
+#endif
+
+/* Cfunc calls with more than this many arguments when using a splat use a temporary
+ * array for argv.
+ */
+#ifndef VM_ARGC_STACK_MAX
+#define VM_ARGC_STACK_MAX 1024
 #endif
 
 struct rb_captured_block {

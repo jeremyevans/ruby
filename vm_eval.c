@@ -53,6 +53,7 @@ rb_vm_call0(rb_execution_context_t *ec, VALUE recv, ID id, int argc, const VALUE
         .recv = recv,
         .argc = argc,
         .kw_splat = kw_splat,
+        .heap_argv = 0,
     };
 
     return vm_call0_body(ec, &calling, argv);
@@ -82,6 +83,7 @@ vm_call0_cc(rb_execution_context_t *ec, VALUE recv, ID id, int argc, const VALUE
         .recv = recv,
         .argc = argc,
         .kw_splat = kw_splat,
+        .heap_argv = 0,
     };
 
     return vm_call0_body(ec, &calling, argv);

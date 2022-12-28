@@ -285,6 +285,7 @@ class RubyVM::MJIT::Compiler # :nodoc: all
           src << "        calling.block_handler = VM_BLOCK_HANDLER_NONE;\n"
         end
         src << "        calling.kw_splat = #{kw_splat ? 1 : 0};\n"
+        src << "        calling.heap_argv = 0;\n"
         src << "        calling.recv = stack[#{stack_size + sp_inc - 1}];\n"
         src << "        calling.argc = #{C.vm_ci_argc(ci)};\n"
 
