@@ -295,7 +295,14 @@ struct rb_calling_info {
     VALUE recv;
     int argc;
     bool kw_splat;
+    VALUE heap_argv;
 };
+
+#ifndef VM_ARGC_STACK_MAX
+#define VM_ARGC_STACK_MAX -1
+#endif
+
+# define CALLING_ARGC(calling) ((calling)->heap_argv ? RARRAY_LENINT((calling)->heap_argv) : (calling)->argc)
 
 struct rb_execution_context_struct;
 
