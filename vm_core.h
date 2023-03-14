@@ -299,7 +299,7 @@ struct rb_calling_info {
 };
 
 #ifndef VM_ARGC_STACK_MAX
-#define VM_ARGC_STACK_MAX -1
+#define VM_ARGC_STACK_MAX 128
 #endif
 
 # define CALLING_ARGC(calling) ((calling)->heap_argv ? RARRAY_LENINT((calling)->heap_argv) : (calling)->argc)
