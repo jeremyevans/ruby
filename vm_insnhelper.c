@@ -3558,15 +3558,57 @@ vm_call_bmethod_body(rb_execution_context_t *ec, struct rb_calling_info *calling
     return val;
 }
 
+static int vm_callee_setup_block_arg(rb_execution_context_t *ec, struct rb_calling_info *calling, const struct rb_callinfo *ci, const rb_iseq_t *iseq, VALUE *argv, const enum arg_setup_type arg_setup_type);
+static VALUE invoke_bmethod(rb_execution_context_t *ec, const rb_iseq_t *iseq, VALUE self, const struct rb_captured_block *captured, const rb_callable_method_entry_t *me, VALUE type, int opt_pc);
+
 static VALUE
-vm_call_bmethod(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_calling_info *calling)
+vm_call_iseq_bmethod(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_calling_info *calling)
 {
     RB_DEBUG_COUNTER_INC(ccf_bmethod);
 
+    const struct rb_callcache *cc = calling->cc;
+    const rb_callable_method_entry_t *cme = vm_cc_cme(cc);
+    VALUE procv = cme->def->body.bmethod.proc;
+    rb_proc_t *proc;
+    GetProcPtr(procv, proc);
+    const struct rb_block *block = &proc->block;
+
+    while (vm_block_type(block) == block_type_proc) {
+        block = vm_proc_block(block->as.proc);
+    }
+    VM_ASSERT(vm_block_type(block) == block_type_iseq);
+
+    const struct rb_captured_block *captured = &block->as.captured;
+    const rb_iseq_t *iseq = rb_iseq_check(captured->code.iseq);
+    VALUE *sp = cfp->sp - calling->argc - 1;
+    int opt_pc = vm_callee_setup_block_arg(ec, calling, calling->ci, iseq, sp, arg_setup_method);
+    cfp->sp = sp;
+    return invoke_bmethod(ec, iseq, calling->recv, captured, cme,
+                          VM_FRAME_MAGIC_BLOCK | VM_FRAME_FLAG_LAMBDA, opt_pc);
+}
+
+static VALUE
+vm_call_bmethod(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_calling_info *calling)
+{
+    const struct rb_callcache *cc = calling->cc;
+    const rb_callable_method_entry_t *cme = vm_cc_cme(cc);
+    VALUE procv = cme->def->body.bmethod.proc;
+    rb_proc_t *proc;
+    GetProcPtr(procv, proc);
+    const struct rb_block *block = &proc->block;
+
+    while (vm_block_type(block) == block_type_proc) {
+        block = vm_proc_block(block->as.proc);
+    }
+    if (vm_block_type(block) == block_type_iseq) {
+        CC_SET_FASTPATH(cc, vm_call_iseq_bmethod, TRUE);
+        return vm_call_iseq_bmethod(ec, cfp, calling);
+    }
+
+    RB_DEBUG_COUNTER_INC(ccf_bmethod);
+    const struct rb_callinfo *ci = calling->ci;
     VALUE *argv;
     int argc;
-    const struct rb_callinfo *ci = calling->ci;
-
     CALLER_SETUP_ARG(cfp, calling, ci, ALLOW_HEAP_ARGV);
     if (UNLIKELY(calling->heap_argv)) {
         argv = RARRAY_PTR(calling->heap_argv);
@@ -3579,7 +3621,13 @@ vm_call_bmethod(rb_execution_context_t *ec, rb_control_frame_t *cfp, struct rb_c
         cfp->sp += - argc - 1;
     }
 
-    return vm_call_bmethod_body(ec, calling, argv);
+    if (!RB_OBJ_SHAREABLE_P(procv) &&
+        cme->def->body.bmethod.defined_ractor != rb_ractor_self(rb_ec_ractor_ptr(ec))) {
+        rb_raise(rb_eRuntimeError, "defined with an un-shareable Proc in a different Ractor");
+    }
+
+    /* control block frame */
+    return rb_vm_invoke_bmethod(ec, proc, calling->recv, CALLING_ARGC(calling), argv, calling->kw_splat, calling->block_handler, vm_cc_cme(cc));
 }
 
 VALUE
