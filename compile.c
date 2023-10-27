@@ -5870,7 +5870,7 @@ keyword_node_single_splat_p(NODE *kwnode)
 
 static int
 setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
-                int dup_rest, unsigned int *flag_ptr, struct rb_callinfo_kwarg **kwarg_ptr)
+                int *dup_rest, unsigned int *flag_ptr, struct rb_callinfo_kwarg **kwarg_ptr)
 {
     if (!argn) return 0;
 
@@ -5896,14 +5896,36 @@ setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
       case NODE_SPLAT: {
         // f(*a)
         NO_CHECK(COMPILE(args, "args (splat)", RNODE_SPLAT(argn)->nd_head));
-        ADD_INSN1(args, argn, splatarray, RBOOL(dup_rest));
+        ADD_INSN1(args, argn, splatarray, RBOOL(*dup_rest));
+        /* Only allocate at most 1 array per method call on caller side */
+        *dup_rest = 0;
         if (flag_ptr) *flag_ptr |= VM_CALL_ARGS_SPLAT;
         RUBY_ASSERT(flag_ptr == NULL || (*flag_ptr & VM_CALL_KW_SPLAT) == 0);
         return 1;
       }
       case NODE_ARGSCAT: {
         if (flag_ptr) *flag_ptr |= VM_CALL_ARGS_SPLAT;
-        int argc = setup_args_core(iseq, args, RNODE_ARGSCAT(argn)->nd_head, 1, NULL, NULL);
+
+        if (*dup_rest == 1) {
+            switch(nd_type(RNODE_ARGSCAT(argn)->nd_head)) {
+              case NODE_ARGSCAT:  /* f(*a, *b, *c)  */
+              case NODE_ARGSPUSH: /* f(*a, b, *c)   */
+              case NODE_SPLAT:    /* f(*a, *b)      */
+                /*  must allocate at least one array */
+                *dup_rest = 2;
+                break;
+              case NODE_LIST: /* f(a, *b) */
+                /* Block argument instructions could mutate splatted array */
+                /* XXX: Allow optimization if block arg is NODE CONST/IVAR/CVAR/GVAR/LAMBDA */
+                if (!(*flag_ptr & VM_CALL_ARGS_BLOCKARG)) {
+                    /* no need to dup splat array */
+                    *dup_rest = 0;
+                }
+                break;
+            }
+        }
+
+        int argc = setup_args_core(iseq, args, RNODE_ARGSCAT(argn)->nd_head, dup_rest, NULL, NULL);
 
         if (nd_type_p(RNODE_ARGSCAT(argn)->nd_body, NODE_LIST)) {
             int rest_len = compile_args(iseq, args, RNODE_ARGSCAT(argn)->nd_body, &kwnode);
@@ -5916,7 +5938,8 @@ setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
         }
 
         if (nd_type_p(RNODE_ARGSCAT(argn)->nd_head, NODE_LIST)) {
-            ADD_INSN1(args, argn, splatarray, Qtrue);
+            ADD_INSN1(args, argn, splatarray, RBOOL(*dup_rest));
+            *dup_rest = 0;
             argc += 1;
         }
         else {
@@ -5937,13 +5960,26 @@ setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
       }
       case NODE_ARGSPUSH: {
         if (flag_ptr) *flag_ptr |= VM_CALL_ARGS_SPLAT;
-        /* Do not dup_rest for f(*a, **kw) or f(*a, kw: 1)
-         * dup_rest for f(*a, arg) and f(*a, {kw: 1})
-         */
-        int argc = setup_args_core(iseq, args, RNODE_ARGSPUSH(argn)->nd_head,
-                                   !(nd_type(RNODE_ARGSPUSH(argn)->nd_body) == NODE_HASH &&
-                                        RNODE_HASH(RNODE_ARGSPUSH(argn)->nd_body)->nd_brace == 0),
-                                   NULL, NULL);
+
+        if (*dup_rest == 1) {
+            switch(nd_type(RNODE_ARGSPUSH(argn)->nd_head)) {
+              case NODE_ARGSCAT:  /* f(a, *b, c)  */
+                /*  must allocate at least one array */
+                *dup_rest = 2;
+                break;
+              case NODE_SPLAT: /* f(*a, k) */
+                if (nd_type(RNODE_ARGSPUSH(argn)->nd_body) == NODE_HASH &&
+                    RNODE_HASH(RNODE_ARGSPUSH(argn)->nd_body)->nd_brace == 0 &&
+                    !(*flag_ptr & VM_CALL_ARGS_BLOCKARG)) {
+                    /* Do not allocate array for for f(*a, **kw) or f(*a, kw: 1) */
+                    /* XXX: Needs to only do this for hash that cannot refer to
+                            splatted array (NODE_LIST where all NODE_LIT CONST IVAR CVAR GVAR)
+                     */
+                    *dup_rest = 0;
+                }
+            }
+        }
+        int argc = setup_args_core(iseq, args, RNODE_ARGSPUSH(argn)->nd_head, dup_rest, NULL, NULL);
 
         if (nd_type_p(RNODE_ARGSPUSH(argn)->nd_body, NODE_LIST)) {
             int rest_len = compile_args(iseq, args, RNODE_ARGSPUSH(argn)->nd_body, &kwnode);
@@ -5986,8 +6022,8 @@ setup_args(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
            unsigned int *flag, struct rb_callinfo_kwarg **keywords)
 {
     VALUE ret;
+    unsigned int dup_rest = 1;
     if (argn && nd_type_p(argn, NODE_BLOCK_PASS)) {
-        unsigned int dup_rest = 1;
         DECL_ANCHOR(arg_block);
         INIT_ANCHOR(arg_block);
         NO_CHECK(COMPILE(arg_block, "block", RNODE_BLOCK_PASS(argn)->nd_body));
@@ -6004,11 +6040,11 @@ setup_args(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
                 dup_rest = 0;
             }
         }
-        ret = INT2FIX(setup_args_core(iseq, args, RNODE_BLOCK_PASS(argn)->nd_head, dup_rest, flag, keywords));
+        ret = INT2FIX(setup_args_core(iseq, args, RNODE_BLOCK_PASS(argn)->nd_head, &dup_rest, flag, keywords));
         ADD_SEQ(args, arg_block);
     }
     else {
-        ret = INT2FIX(setup_args_core(iseq, args, argn, 0, flag, keywords));
+        ret = INT2FIX(setup_args_core(iseq, args, argn, &dup_rest, flag, keywords));
     }
     return ret;
 }
