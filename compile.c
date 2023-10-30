@@ -5896,7 +5896,9 @@ setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
       case NODE_SPLAT: {
         // f(*a)
         NO_CHECK(COMPILE(args, "args (splat)", RNODE_SPLAT(argn)->nd_head));
-        ADD_INSN1(args, argn, splatarray, RBOOL(*dup_rest));
+        if (*dup_rest != 3) {
+            ADD_INSN1(args, argn, splatarray, RBOOL(*dup_rest));
+        }
         /* Only allocate at most 1 array per method call on caller side */
         *dup_rest = 0;
         if (flag_ptr) *flag_ptr |= VM_CALL_ARGS_SPLAT;
@@ -5967,6 +5969,25 @@ setup_args_core(rb_iseq_t *iseq, LINK_ANCHOR *const args, const NODE *argn,
                 /*  must allocate at least one array */
                 *dup_rest = 2;
                 break;
+              case NODE_SPLAT: /* f(*a, k) | f(*a, **kw) | f(*a, kw: 1) */ {
+                const NODE *body = RNODE_ARGSPUSH(argn)->nd_body;
+                const NODE *list;
+                if (keyword_node_p(body) &&
+                        nd_type_p(list = RNODE_HASH(body)->nd_head, NODE_LIST) &&
+                        RNODE_LIST(list)->as.nd_alen == 2 &&
+                        RNODE_LIST(list)->nd_head == NULL &&
+                        nd_type_p(RNODE_LIST(RNODE_LIST(list)->nd_next)->nd_head, NODE_LVAR) &&
+                        !(*flag_ptr & VM_CALL_ARGS_BLOCKARG)) {
+                    /* Do not allocate array for for f(*a, **kw) if kw is local variable and hash */
+                    *dup_rest = 3;
+                    setup_args_core(iseq, args, RNODE_ARGSPUSH(argn)->nd_head, dup_rest, NULL, NULL);
+                    compile_hash(iseq, args, RNODE_ARGSPUSH(argn)->nd_body, TRUE, FALSE);
+                    ADD_INSN1(args, argn, splatarrayiftype, INT2NUM(T_HASH));
+                    *flag_ptr |= VM_CALL_ARGS_SPLAT | VM_CALL_KW_SPLAT;
+                    return 2;
+                }
+                break;
+              }
             }
         }
         int argc = setup_args_core(iseq, args, RNODE_ARGSPUSH(argn)->nd_head, dup_rest, NULL, NULL);

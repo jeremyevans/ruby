@@ -515,7 +515,10 @@ concatarray
     ary = vm_concat_array(ary1, ary2);
 }
 
-/* call to_a on array ary to splat */
+/* setup array splat
+   calls to_a on ary is not an array
+   calls rb_ary_dup on ary if flag is true
+ */
 DEFINE_INSN
 splatarray
 (VALUE flag)
@@ -524,6 +527,20 @@ splatarray
 // attr bool leaf = false; /* has rb_check_array_type() */
 {
     obj = vm_splat_array(flag, ary);
+}
+
+/* setup array splat depending on type of obj
+   calls to_a on ary is not an array
+   calls rb_ary_dup on ary if type of obj is not given type
+ */
+DEFINE_INSN
+splatarrayiftype
+(rb_num_t type)
+(VALUE ary, VALUE obj)
+(VALUE ary, VALUE obj)
+// attr bool leaf = false; /* has rb_check_array_type() */
+{
+    ary = vm_splat_array(!RB_TYPE_P(obj, (int)type), ary);
 }
 
 /* put new Hash from n elements. n must be an even number. */
