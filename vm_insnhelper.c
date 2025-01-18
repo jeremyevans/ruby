@@ -5611,6 +5611,9 @@ rb_vm_concat_to_array(VALUE ary1, VALUE ary2st)
 static VALUE
 vm_splat_array(VALUE flag, VALUE ary)
 {
+    if (NIL_P(ary)) {
+        return RTEST(flag) ? rb_ary_new() : rb_cArray_empty_frozen;
+    }
     VALUE tmp = rb_check_to_array(ary);
     if (NIL_P(tmp)) {
         return rb_ary_new3(1, ary);
