@@ -131,7 +131,6 @@ static int set_foreach_check(set_table *, set_foreach_check_callback_func *, set
 static set_index_t set_keys(set_table *table, set_data_t *keys, set_index_t size);
 static void set_free_table(set_table *);
 static void set_clear(set_table *);
-static set_table *set_copy(set_table *);
 static CONSTFUNC(int set_numcmp(set_data_t, set_data_t));
 static PUREFUNC(size_t set_memsize(const set_table *));
 static PUREFUNC(set_index_t set_hash(const void *ptr, size_t len, set_index_t h));
@@ -569,7 +568,6 @@ set_free_table(set_table *tab)
 {
     free(tab->bins);
     free(tab->entries);
-    free(tab);
 }
 
 /* Return byte size of memory allocated for table TAB.  */
@@ -1122,22 +1120,6 @@ set_replace(set_table *new_tab, set_table *old_tab)
     return new_tab;
 }
 
-/* Create and return a copy of table OLD_TAB.  */
-static set_table *
-set_copy(set_table *old_tab)
-{
-    set_table *new_tab;
-
-    new_tab = (set_table *) malloc(sizeof(set_table));
-
-    if (set_replace(new_tab, old_tab) == NULL) {
-        set_free_table(new_tab);
-        return NULL;
-    }
-
-    return new_tab;
-}
-
 /* Update the entries start of table TAB after removing an entry
    with index N in the array entries.  */
 static inline void
@@ -1638,7 +1620,7 @@ static ID id_set_iter_lev;
 #define RSET_COMPARE_BY_IDENTITY(set) (RSET_TABLE(set)->type == &identhash)
 
 struct set_object {
-    set_table *table;
+    set_table table;
 };
 
 static int
@@ -1653,29 +1635,28 @@ static void
 set_mark(void *ptr)
 {
     struct set_object *sobj = ptr;
-    if (sobj->table) set_foreach(sobj->table, mark_key, 0);
+    set_foreach(&sobj->table, mark_key, 0);
 }
 
 static void
 set_free(void *ptr)
 {
     struct set_object *sobj = ptr;
-    set_free_table(sobj->table);
-    sobj->table = NULL;
+    set_free_table(&sobj->table);
 }
 
 static size_t
 set_size(const void *ptr)
 {
     const struct set_object *sobj = ptr;
-    return (unsigned long)set_memsize(sobj->table);
+    return (unsigned long)set_memsize(&sobj->table) - sizeof(set_table);
 }
 
 static void
 set_compact(void *ptr)
 {
     struct set_object *sobj = ptr;
-    set_compact_table(sobj->table);
+    set_compact_table(&sobj->table);
 }
 
 static const rb_data_type_t set_data_type = {
@@ -1686,7 +1667,7 @@ static const rb_data_type_t set_data_type = {
         .dsize = set_size,
         .dcompact = set_compact,
     },
-    .flags = RUBY_TYPED_FREE_IMMEDIATELY
+    .flags = RUBY_TYPED_FREE_IMMEDIATELY | RUBY_TYPED_EMBEDDABLE
 };
 
 static inline set_table *
@@ -1694,7 +1675,7 @@ RSET_TABLE(VALUE set)
 {
     struct set_object *sobj;
     TypedData_Get_Struct(set, struct set_object, &set_data_type, sobj);
-    return sobj->table;
+    return &sobj->table;
 }
 
 static unsigned long
@@ -1873,7 +1854,7 @@ set_alloc_with_size(VALUE klass, set_index_t size)
     struct set_object *sobj;
 
     set = TypedData_Make_Struct(klass, struct set_object, &set_data_type, sobj);
-    sobj->table = set_init_table_with_size(&objhash, size);
+    set_init_existing_table_with_size(&sobj->table, &objhash, size);
 
     return set;
 }
@@ -1991,8 +1972,8 @@ set_i_initialize_copy(VALUE set, VALUE other)
     struct set_object *sobj;
     TypedData_Get_Struct(set, struct set_object, &set_data_type, sobj);
 
-    set_free_table(sobj->table);
-    sobj->table = set_copy(RSET_TABLE(other));
+    set_free_table(&sobj->table);
+    set_replace(&sobj->table, RSET_TABLE(other));
     return set;
 }
 
@@ -2598,17 +2579,20 @@ set_reset_table_with_type(VALUE set, const struct set_hash_type *type)
 
     struct set_object *sobj;
     TypedData_Get_Struct(set, struct set_object, &set_data_type, sobj);
-    set_table *old = sobj->table;
+    set_table *old = &sobj->table;
 
     size_t size = set_table_size(old);
     if (size > 0) {
-        set_table *new = set_init_table_with_size(type, size);
+        VALUE tmp = set_alloc_with_size(0, size);
+        set_table *new = RSET_TABLE(tmp);
         set_iter(set, set_merge_i, (set_data_t)new);
-        sobj->table = new;
         set_free_table(old);
+        *old = *new;
+        new->bins = NULL;
+        new->entries = NULL;
     }
     else {
-        sobj->table->type = type;
+        sobj->table.type = type;
     }
 
     return set;
