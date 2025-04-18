@@ -1686,7 +1686,7 @@ static const rb_data_type_t set_data_type = {
         .dsize = set_size,
         .dcompact = set_compact,
     },
-    .flags = 0
+    .flags = RUBY_TYPED_FREE_IMMEDIATELY
 };
 
 static inline set_table *
