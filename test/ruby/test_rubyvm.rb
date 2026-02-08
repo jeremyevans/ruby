@@ -1,6 +1,7 @@
 # frozen_string_literal: false
 require 'test/unit'
 require_relative '../lib/parser_support'
+require 'objspace'
 
 class TestRubyVM < Test::Unit::TestCase
   def test_stat
@@ -69,5 +70,43 @@ class TestRubyVM < Test::Unit::TestCase
 
   ensure
     RubyVM.keep_script_lines = prev_conf
+  end
+
+  def test_shape_dup
+    c = Class.new
+    o = c.new
+    n = RubyVM.shape_dup(o)
+    assert_instance_of(c, n)
+    assert_equal([], n.instance_variables)
+    assert_equal(ObjectSpace.memsize_of(c.new), ObjectSpace.memsize_of(n))
+
+    o.instance_variable_set(:@a, 1)
+    n = RubyVM.shape_dup(o)
+    assert_equal([:@a], n.instance_variables)
+    assert_equal([nil], n.instance_variables.map{n.instance_variable_get(it)})
+    assert_equal(ObjectSpace.memsize_of(c.new), ObjectSpace.memsize_of(n))
+
+    o.instance_variable_set(:@b, 2)
+    n = RubyVM.shape_dup(o)
+    assert_equal([:@a, :@b], n.instance_variables)
+    assert_equal([nil] * 2, n.instance_variables.map{n.instance_variable_get(it)})
+    assert_equal(ObjectSpace.memsize_of(c.new), ObjectSpace.memsize_of(n))
+
+    vars = [:@a, :@b]
+    var = "@b"
+    76.times do |i|
+      var.succ!
+      vars << var.to_sym
+      o.instance_variable_set(var, i)
+    end
+    n = RubyVM.shape_dup(o)
+    assert_equal(vars, n.instance_variables)
+    assert_equal([nil] * vars.length, n.instance_variables.map{n.instance_variable_get(it)})
+    assert_equal(ObjectSpace.memsize_of(c.new), ObjectSpace.memsize_of(n))
+
+    o.instance_variable_set(:@over, 0)
+    assert_raise(TypeError) { RubyVM.shape_dup(o) }
+
+    assert_raise(TypeError) { RubyVM.shape_dup({}) }
   end
 end

@@ -1613,9 +1613,57 @@ rb_shape_free_all(void)
     xfree((void *)rb_shape_tree.capacities);
 }
 
+/*
+ *  call-seq:
+ *     RubyVM.shape_dup(obj)   ->   new_obj
+ *
+ *  Returns a new instance of the class of +obj+, with all instance
+ *  instance variables of +obj+ set to +nil+ in the returned object.
+ *
+ *  This is designed for the quick initialization of objects with
+ *  many +nil+ instance variables, allowing for shape-friendly code
+ *  without the penalty of an instance variable set and shape transition
+ *  per instance variable.
+ *
+ *  This method only supports objects that:
+ *
+ *  * Have T_OBJECT type
+ *  * Do not have "too complex" shape
+ *  * Have 78 or fewer instance variables
+ *
+ */
+
+static VALUE
+obj_shape_dup(VALUE ruby_vm, VALUE obj)
+{
+    rb_check_type(obj, T_OBJECT);
+    shape_id_t shape_id = RBASIC_SHAPE_ID(obj);
+
+    if (UNLIKELY(rb_shape_too_complex_p(shape_id))) {
+        rb_raise(rb_eTypeError, "Cannot allocate object with too complex shape");
+    }
+    if (UNLIKELY(RSHAPE_LEN(shape_id) > 78)) {
+        rb_raise(rb_eTypeError, "Cannot use shape_dup with object with more than 78 instance variables");
+    }
+
+    VALUE new_obj = rb_obj_alloc(rb_obj_class(obj));
+    rb_ensure_iv_list_size(obj, RSHAPE_CAPACITY(RBASIC_SHAPE_ID(new_obj)), RSHAPE_CAPACITY(shape_id));
+    RBASIC_SET_SHAPE_ID(new_obj, shape_id);
+
+    rb_shape_t *shape = RSHAPE(shape_id);
+    VALUE * fields = ROBJECT_FIELDS(new_obj);
+    for (uint32_t i = 0; i < shape->next_field_index; i++) {
+        RB_OBJ_WRITE(new_obj, &fields[i], Qnil);
+    }
+
+    return new_obj;
+}
+
 void
 Init_shape(void)
 {
+    rb_define_singleton_method(rb_cRubyVM, "shape_dup", obj_shape_dup, 1);
+
 #if SHAPE_DEBUG
     /* Document-class: RubyVM::Shape
      * :nodoc: */

@@ -1,0 +1,20 @@
+prelude: |
+  c = Class.new
+  o = c.new
+  var = +"@a"
+  64.times{o.instance_variable_set(var, nil); var.succ!}
+  c.define_singleton_method(:new){o.dup}
+
+  var = "@a".dup
+  c2 = Class.new do
+    class_eval <<-END
+      def initialize
+        #{Array.new(64){v = var.dup; var.succ!; v}.reverse.join(" = ")} = nil
+      end
+    END
+  end
+
+benchmark:
+  dup: o.dup
+  ivar_set: c2.new
+  shape_dup: RubyVM.shape_dup(o)
